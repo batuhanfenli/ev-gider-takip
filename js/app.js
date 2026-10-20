@@ -67,6 +67,28 @@ function toast(msg, type = "") {
   toast.timer = setTimeout(() => (t.className = ""), 2800);
 }
 
+// Tarayıcının confirm/prompt pencereleri yerine uygulamanın kendi onay penceresi.
+function ask({ title, text = "", input = null, ok = "Tamam", danger = false }) {
+  return new Promise((resolve) => {
+    const root = $("#dialog-root");
+    root.innerHTML = `<div class="modal-backdrop top"><form class="modal dialog" role="alertdialog" aria-modal="true">
+      <div class="modal-body stack">
+        <h2>${esc(title)}</h2>
+        ${text ? `<p class="muted">${esc(text)}</p>` : ""}
+        ${input ? `<input id="ask-input" value="${esc(input.value || "")}" placeholder="${esc(input.placeholder || "")}" maxlength="40">` : ""}
+        <div class="modal-actions"><span class="grow"></span>
+          <button type="button" class="btn ghost" id="ask-no">Vazgeç</button>
+          <button type="submit" class="btn ${danger ? "danger" : "primary"}">${esc(ok)}</button></div>
+      </div></form></div>`;
+    const done = (v) => { root.innerHTML = ""; resolve(v); };
+    const inp = $("#ask-input", root);
+    setTimeout(() => (inp || $("button[type=submit]", root)).focus(), 30);
+    $("#ask-no", root).onclick = () => done(input ? null : false);
+    $("form", root).onsubmit = (e) => { e.preventDefault(); done(input ? inp.value.trim() || null : true); };
+    $(".modal-backdrop", root).onkeydown = (e) => { if (e.key === "Escape") { e.stopPropagation(); done(input ? null : false); } };
+  });
+}
+
 // ---------- Tarih aralığı ----------
 const PRESETS = [
   ["month", "Bu ay"], ["lastMonth", "Geçen ay"], ["last3", "Son 3 ay"],
@@ -585,7 +607,7 @@ function openExpenseModal(exp) {
   // Not: Firestore çevrimdışıyken de yazmayı kabul eder ve bağlantı gelince gönderir.
   const del = $("#del", root);
   if (del) del.onclick = async () => {
-    if (!confirm("Bu harcama silinsin mi?")) return;
+    if (!(await ask({ title: "Harcama silinsin mi?", text: `${fmt(exp.amount)} · ${exp.note || exp.sub}`, ok: "Sil", danger: true }))) return;
     await S.store.deleteExpense(exp.id);
     close();
     toast("Harcama silindi");
@@ -803,33 +825,33 @@ function renderSettings(view) {
   };
   $("#csv-all").onclick = () => exportCsv(S.expenses.slice().sort(byDateDesc));
   const cd = $("#clear-demo");
-  if (cd) cd.onclick = async () => { if (confirm("Tüm örnek harcamalar silinsin mi?")) { await S.store.clearAll(); toast("Örnek veriler silindi"); } };
+  if (cd) cd.onclick = async () => { if (await ask({ title: "Örnek harcamalar silinsin mi?", ok: "Sil", danger: true })) { await S.store.clearAll(); toast("Örnek veriler silindi"); } };
 
   const saveCats = async (list) => { S.categories = list; await S.store.saveCategories(list); renderView(); };
-  $("#add-cat").onclick = () => {
-    const name = prompt("Yeni kategorinin adı:");
-    if (!name || !name.trim()) return;
-    const icon = (prompt("Bir emoji seçin (isteğe bağlı):", "📌") || "📌").trim().slice(0, 4);
-    const id = name.trim().toLocaleLowerCase("tr").replace(/[^a-z0-9çğıöşü]+/g, "-") + "-" + Date.now().toString(36).slice(-4);
-    saveCats([...S.categories, { id, name: name.trim(), icon, color: PALETTE[S.categories.length % PALETTE.length], subs: ["Genel"] }]);
+  $("#add-cat").onclick = async () => {
+    const name = await ask({ title: "Yeni kategori", input: { placeholder: "Örn. Çocuk" }, ok: "Devam" });
+    if (!name) return;
+    const icon = ((await ask({ title: "Kategori simgesi", text: "Bir emoji yazın ya da olduğu gibi bırakın.", input: { value: "📌" }, ok: "Ekle" })) || "📌").slice(0, 4);
+    const id = name.toLocaleLowerCase("tr").replace(/[^a-z0-9çğıöşü]+/g, "-") + "-" + Date.now().toString(36).slice(-4);
+    saveCats([...S.categories, { id, name: name, icon, color: PALETTE[S.categories.length % PALETTE.length], subs: ["Genel"] }]);
   };
-  $$("[data-addsub]").forEach((b) => b.onclick = () => {
-    const name = prompt("Yeni alt kategorinin adı:");
-    if (!name || !name.trim()) return;
-    saveCats(S.categories.map((c) => c.id === b.dataset.addsub && !c.subs.includes(name.trim()) ? { ...c, subs: [...c.subs, name.trim()] } : c));
+  $$("[data-addsub]").forEach((b) => b.onclick = async () => {
+    const name = await ask({ title: `${getCat(b.dataset.addsub).name} için alt kategori`, input: { placeholder: "Alt kategori adı" }, ok: "Ekle" });
+    if (!name) return;
+    saveCats(S.categories.map((c) => c.id === b.dataset.addsub && !c.subs.includes(name) ? { ...c, subs: [...c.subs, name] } : c));
   });
-  $$("[data-delsub]").forEach((b) => b.onclick = () => {
+  $$("[data-delsub]").forEach((b) => b.onclick = async () => {
     const [id, s] = b.dataset.delsub.split("|");
     const c = getCat(id);
     if (c.subs.length <= 1) return toast("Her kategoride en az bir alt kategori kalmalı");
-    if (!confirm(`"${s}" alt kategorisi silinsin mi? Bu alt kategoriye kayıtlı harcamalar silinmez.`)) return;
+    if (!(await ask({ title: `"${s}" silinsin mi?`, text: "Bu alt kategoriye kayıtlı harcamalar silinmez.", ok: "Sil", danger: true }))) return;
     saveCats(S.categories.map((x) => x.id === id ? { ...x, subs: x.subs.filter((y) => y !== s) } : x));
   });
-  $$("[data-delcat]").forEach((b) => b.onclick = () => {
+  $$("[data-delcat]").forEach((b) => b.onclick = async () => {
     const c = getCat(b.dataset.delcat);
     const n = usage(c.id);
     if (n) return toast(`Bu kategoride ${n} harcama var; önce onları başka kategoriye taşıyın`);
-    if (!confirm(`"${c.name}" kategorisi silinsin mi?`)) return;
+    if (!(await ask({ title: `"${c.name}" kategorisi silinsin mi?`, ok: "Sil", danger: true }))) return;
     saveCats(S.categories.filter((x) => x.id !== c.id));
   });
 }
