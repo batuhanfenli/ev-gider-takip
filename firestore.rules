@@ -1,0 +1,14 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Yalnızca bu iki e-postayla giriş yapan kişiler okuyup yazabilir.
+    // js/config.js içindeki "members" listesiyle aynı tutun.
+    function isMember() {
+      return request.auth != null &&
+        request.auth.token.email in ['batuhan@ornek.com', 'esim@ornek.com'];
+    }
+    match /{document=**} {
+      allow read, write: if isMember();
+    }
+  }
+}

@@ -1,0 +1,35 @@
+// Varsayılan kategori listesi. Uygulama içinden eklenen kategoriler buluta kaydedilir
+// ve bu listenin yerine geçer; buradaki liste yalnızca ilk kurulumda kullanılır.
+export const DEFAULT_CATEGORIES = [
+  { id: "konut", name: "Konut", icon: "🏠", color: "#6366f1",
+    subs: ["Kira", "Aidat", "Emlak vergisi", "DASK / konut sigortası"] },
+  { id: "faturalar", name: "Faturalar", icon: "💡", color: "#f59e0b",
+    subs: ["Elektrik", "Su", "Doğalgaz", "İnternet", "Cep telefonu", "TV / dijital abonelikler"] },
+  { id: "market", name: "Mutfak & Market", icon: "🛒", color: "#10b981",
+    subs: ["Market alışverişi", "Pazar / manav", "Kasap / şarküteri", "Fırın", "Damacana su"] },
+  { id: "yemek", name: "Yemek Dışarıda", icon: "🍔", color: "#ef4444",
+    subs: ["İnternet yemek siparişi", "Restoran / kafe"] },
+  { id: "esya", name: "Ev Eşyası", icon: "🛋️", color: "#8b5cf6",
+    subs: ["Mobilya", "Beyaz eşya", "Küçük ev aletleri", "Ev tekstili", "Dekorasyon", "Mutfak gereçleri"] },
+  { id: "temizlik", name: "Temizlik", icon: "🧽", color: "#06b6d4",
+    subs: ["Temizlik malzemeleri", "Temizlik görevlisi", "Kuru temizleme / halı yıkama"] },
+  { id: "tamir", name: "Tamir & Tadilat", icon: "🔧", color: "#78716c",
+    subs: ["Usta / işçilik", "Malzeme (boya, hırdavat)", "Tesisat / elektrik tamiri", "Cihaz tamiri"] },
+  { id: "teknoloji", name: "Teknoloji", icon: "💻", color: "#3b82f6",
+    subs: ["Telefon", "Bilgisayar / tablet", "TV & elektronik", "Aksesuar"] },
+  { id: "giyim", name: "Giyim", icon: "👕", color: "#ec4899",
+    subs: ["Kıyafet", "Ayakkabı", "Çanta / aksesuar"] },
+  { id: "saglik", name: "Kişisel Bakım & Sağlık", icon: "💊", color: "#14b8a6",
+    subs: ["Kozmetik", "Kuaför / berber", "Eczane / ilaç", "Doktor / hastane"] },
+  { id: "ulasim", name: "Ulaşım", icon: "🚗", color: "#0ea5e9",
+    subs: ["Yakıt", "Toplu taşıma / taksi", "Araç bakım", "Otopark / köprü / otoyol", "Sigorta / kasko"] },
+  { id: "eglence", name: "Eğlence & Sosyal", icon: "🎉", color: "#f97316",
+    subs: ["Sinema / etkinlik", "Tatil / seyahat", "Hediye", "Hobi"] },
+  { id: "evcil", name: "Evcil Hayvan", icon: "🐾", color: "#a16207",
+    subs: ["Mama", "Veteriner", "Malzeme"] },
+  { id: "diger", name: "Diğer", icon: "📦", color: "#64748b",
+    subs: ["Bağış", "Banka / kart ücretleri", "Sınıflandırılmamış"] },
+];
+
+export const PALETTE = ["#6366f1", "#f59e0b", "#10b981", "#ef4444", "#8b5cf6", "#06b6d4",
+  "#78716c", "#3b82f6", "#ec4899", "#14b8a6", "#0ea5e9", "#f97316", "#a16207", "#64748b"];
