@@ -241,31 +241,69 @@ function renderLogin(app) {
           <div class="stack">${members.map((m) => `<button class="btn primary block" data-email="${esc(m.email)}">${esc(m.name)} olarak devam et</button>`).join("")}</div>
         ` : `
           <form id="login-form" class="stack">
-            <label>E-posta<input type="email" name="email" autocomplete="username" required></label>
-            <label>Şifre<input type="password" name="password" autocomplete="current-password" required></label>
+            <div class="seg" role="tablist">
+              <label><input type="radio" name="mode" value="in" checked><span>Giriş yap</span></label>
+              <label><input type="radio" name="mode" value="up"><span>Hesap oluştur</span></label>
+            </div>
+            <label>E-posta<input type="email" name="email" id="login-email" autocomplete="username" required></label>
+            <label>Şifre<input type="password" name="password" id="login-password" autocomplete="current-password" minlength="6" required></label>
+            <p class="muted small" id="login-hint" hidden>İlk kez kullanıyorsan e-postanı ve kendine bir şifre (en az 6 karakter) yaz. Yalnızca ${members.map((m) => esc(m.name)).join(" ve ")} hesap açabilir.</p>
             <button class="btn primary block" type="submit">Giriş yap</button>
             <p class="error" id="login-error"></p>
+            <button type="button" class="btn ghost small" id="forgot">Şifremi unuttum</button>
           </form>`}
       </div>
     </div>`;
   if (demo) {
     $$("[data-email]", app).forEach((b) => b.onclick = () => S.store.signIn(b.dataset.email));
-  } else {
-    $("#login-form").onsubmit = async (e) => {
-      e.preventDefault();
-      const f = new FormData(e.target);
-      const btn = $("button[type=submit]", e.target);
-      btn.disabled = true;
-      btn.textContent = "Giriş yapılıyor…";
-      try {
-        await S.store.signIn(f.get("email").trim(), f.get("password"));
-      } catch (err) {
-        $("#login-error").textContent = "E-posta veya şifre hatalı.";
-        btn.disabled = false;
-        btn.textContent = "Giriş yap";
-      }
-    };
+    return;
   }
+  const form = $("#login-form");
+  const btn = $("button[type=submit]", form);
+  const err = $("#login-error");
+  const mode = () => $("input[name=mode]:checked", form).value;
+  $$("input[name=mode]", form).forEach((r) => r.onchange = () => {
+    const up = mode() === "up";
+    btn.textContent = up ? "Hesap oluştur" : "Giriş yap";
+    $("#login-hint").hidden = !up;
+    $("#forgot").hidden = up;
+    $("#login-password").autocomplete = up ? "new-password" : "current-password";
+    err.textContent = "";
+  });
+  $("#forgot").onclick = async () => {
+    const email = $("#login-email").value.trim();
+    if (!email) return (err.textContent = "Önce e-postanı yaz, sonra Şifremi unuttum'a bas.");
+    try {
+      await S.store.resetPassword(email);
+      toast("Şifre yenileme bağlantısı e-postana gönderildi", "ok");
+    } catch { err.textContent = "Bağlantı gönderilemedi. E-postayı kontrol et."; }
+  };
+  form.onsubmit = async (e) => {
+    e.preventDefault();
+    const f = new FormData(form);
+    const email = f.get("email").trim();
+    const up = mode() === "up";
+    err.textContent = "";
+    if (up && !members.some((m) => m.email.toLowerCase() === email.toLowerCase())) {
+      return (err.textContent = "Bu e-posta uygulamayı kullanabilecek kişiler arasında değil.");
+    }
+    const label = btn.textContent;
+    btn.disabled = true;
+    btn.textContent = up ? "Hesap açılıyor…" : "Giriş yapılıyor…";
+    try {
+      await (up ? S.store.signUp(email, f.get("password")) : S.store.signIn(email, f.get("password")));
+    } catch (e2) {
+      const code = e2?.code || "";
+      err.textContent =
+        code.includes("email-already-in-use") ? "Bu e-postayla zaten hesap var. Giriş yap sekmesini kullan." :
+        code.includes("weak-password") ? "Şifre en az 6 karakter olmalı." :
+        code.includes("operation-not-allowed") || code.includes("configuration-not-found") ? "Firebase'de Email/Password girişi henüz açılmamış." :
+        code.includes("network") ? "İnternet bağlantısı yok." :
+        up ? "Hesap açılamadı. Tekrar dene." : "E-posta veya şifre hatalı.";
+      btn.disabled = false;
+      btn.textContent = label;
+    }
+  };
 }
 
 // ---------- Tarih çubuğu ----------

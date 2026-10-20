@@ -36,6 +36,8 @@ async function createCloudStore() {
         cb(u ? { email: u.email, name: memberName(u.email) } : null));
     },
     signIn: (email, password) => auth.signInWithEmailAndPassword(a, email, password),
+    signUp: (email, password) => auth.createUserWithEmailAndPassword(a, email, password),
+    resetPassword: (email) => auth.sendPasswordResetEmail(a, email),
     signOut: () => auth.signOut(a),
     watchExpenses(cb, onError) {
       return fs.onSnapshot(expensesCol, (snap) => {
