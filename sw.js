@@ -1,6 +1,6 @@
 // Uygulama dosyalarını önbelleğe alır: önce ağdan dener, internet yoksa önbellekten açar.
 // Veriler Firestore'un kendi çevrimdışı önbelleğinde tutulur, burada değil.
-const CACHE = "ev-giderleri-v1";
+const CACHE = "ev-giderleri-v2";
 const SHELL = [
   "./", "index.html", "css/styles.css", "js/app.js", "js/store.js", "js/config.js",
   "js/categories.js", "js/receipt.js", "js/vendor/anthropic-sdk.js", "manifest.webmanifest",

@@ -391,3 +391,5 @@ label input, label select { color: var(--text); font-weight: 400; font-size: 15p
 .modal.dialog h2 { font-size: 18px; text-wrap: balance; }
 .modal.dialog p { margin: 0; }
 .btn.danger { background: var(--danger); color: #fff; }
+.badge.ok { background: color-mix(in srgb, var(--ok) 14%, transparent); color: var(--ok); }
+.badge.error { background: color-mix(in srgb, var(--danger) 14%, transparent); color: var(--danger); }

@@ -40,8 +40,9 @@ async function createCloudStore() {
     resetPassword: (email) => auth.sendPasswordResetEmail(a, email),
     signOut: () => auth.signOut(a),
     watchExpenses(cb, onError) {
-      return fs.onSnapshot(expensesCol, (snap) => {
-        cb(snap.docs.map((d) => ({ id: d.id, ...d.data(), pending: d.metadata.hasPendingWrites })));
+      return fs.onSnapshot(expensesCol, { includeMetadataChanges: true }, (snap) => {
+        cb(snap.docs.map((d) => ({ id: d.id, ...d.data(), pending: d.metadata.hasPendingWrites })),
+          { offline: snap.metadata.fromCache, pending: snap.metadata.hasPendingWrites });
       }, onError);
     },
     watchCategories(cb) {

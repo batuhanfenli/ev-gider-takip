@@ -150,8 +150,16 @@ async function start() {
     S.user = user;
     S.loaded = false;
     if (user) {
-      unsubs.push(S.store.watchExpenses((list) => { S.expenses = list; S.loaded = true; renderView(); },
-        (err) => { console.error(err); toast("Veriler okunamadı: yetki hatası", "error"); }));
+      unsubs.push(S.store.watchExpenses((list, sync) => {
+        S.expenses = list; S.loaded = true; S.sync = sync || {}; S.syncError = null;
+        renderSyncBadge(); renderView();
+      }, (err) => {
+        console.error(err);
+        S.syncError = err?.code || "bilinmeyen";
+        S.loaded = true;
+        renderSyncBadge(); renderView();
+        toast(S.syncError.includes("permission") ? "Bu hesabın verilere erişim izni yok" : "Buluta bağlanılamadı", "error");
+      }));
       unsubs.push(S.store.watchCategories((list) => { S.categories = list && list.length ? list : DEFAULT_CATEGORIES; renderView(); }));
       unsubs.push(S.store.watchSettings((s) => { S.settings = s || {}; }));
     }
@@ -188,6 +196,7 @@ function render() {
         <header class="topbar">
           <h1>${{ ozet: "Özet", harcamalar: "Harcamalar", ayarlar: "Ayarlar" }[r] || "Özet"}</h1>
           <div class="topbar-right">
+            <span id="sync-badge"></span>
             ${S.store.mode === "demo" ? `<span class="badge warn" title="Veriler yalnızca bu cihazda tutuluyor">Deneme modu</span>` : ""}
             <span class="topbar-user">${avatar(S.user.name)}</span>
           </div>
@@ -205,7 +214,21 @@ function render() {
     </div>`;
   $$("[data-act=add]", app).forEach((b) => b.onclick = () => openExpenseModal());
   $$("[data-act=receipt]", app).forEach((b) => b.onclick = () => openReceiptModal());
+  renderSyncBadge();
   renderView();
+}
+
+// Buluta bağlantı durumunu üst çubukta gösterir: çevrimdışı, gönderiliyor ya da hata.
+function renderSyncBadge() {
+  const el = $("#sync-badge");
+  if (!el || S.store.mode !== "cloud") return;
+  const st = S.syncError ? ["error", "Bağlantı hatası"]
+    : S.sync?.pending ? ["warn", "Gönderiliyor…"]
+    : S.sync?.offline ? ["warn", "Çevrimdışı"]
+    : ["ok", "Senkron"];
+  el.className = "badge " + st[0];
+  el.textContent = st[1];
+  el.title = S.syncError ? "Hata: " + S.syncError : "";
 }
 
 function renderView() {
