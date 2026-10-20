@@ -296,6 +296,7 @@ function renderLogin(app) {
       const code = e2?.code || "";
       err.textContent =
         code.includes("email-already-in-use") ? "Bu e-postayla zaten hesap var. Giriş yap sekmesini kullan." :
+        code.includes("admin-restricted-operation") ? "Yeni hesap açma kapalı. Hesabın varsa Giriş yap sekmesini kullan." :
         code.includes("weak-password") ? "Şifre en az 6 karakter olmalı." :
         code.includes("operation-not-allowed") || code.includes("configuration-not-found") ? "Firebase'de Email/Password girişi henüz açılmamış." :
         code.includes("network") ? "İnternet bağlantısı yok." :
