@@ -73,7 +73,7 @@ async function createCloudStore() {
 }
 
 function createDemoStore() {
-  const KEY = "ev-giderleri-demo-v1";
+  const KEY = "ev-giderleri-demo-v2";
   const listeners = { expenses: new Set(), categories: new Set(), settings: new Set(), auth: new Set() };
   let state = load();
 

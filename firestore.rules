@@ -5,7 +5,7 @@ service cloud.firestore {
     // js/config.js içindeki "members" listesiyle aynı tutun.
     function isMember() {
       return request.auth != null &&
-        request.auth.token.email in ['batuhan@ornek.com', 'esim@ornek.com'];
+        request.auth.token.email in ['batuhan@ornek.com', 'dirim@ornek.com'];
     }
     match /{document=**} {
       allow read, write: if isMember();

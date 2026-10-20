@@ -14,5 +14,5 @@ export const firebaseConfig = {
 // açılan hesaplarla ve firestore.rules dosyasındaki listeyle aynı olmalı.
 export const members = [
   { email: "batuhan@ornek.com", name: "Batuhan" },
-  { email: "esim@ornek.com", name: "Eşim" },
+  { email: "dirim@ornek.com", name: "Dirim" },
 ];

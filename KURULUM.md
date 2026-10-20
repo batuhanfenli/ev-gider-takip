@@ -6,7 +6,7 @@ Uygulama bir web uygulamasıdır (PWA). İnternetten açılır, sonra her cihaza
 
 1. https://console.firebase.google.com adresinde **Proje ekle**. Google Analytics'i kapatabilirsin.
 2. **Build → Authentication → Get started → Email/Password**'ü aç.
-   **Users** sekmesinden iki kullanıcı ekle: senin ve eşinin e-postası ile birer şifre.
+   **Users** sekmesinden iki kullanıcı ekle: senin ve Dirim'in e-postası ile birer şifre.
 3. **Build → Firestore Database → Create database**. Konum olarak `europe-west` (ör. `eur3`) seç, **production mode** ile başlat.
    **Rules** sekmesine `firestore.rules` dosyasının içeriğini yapıştır, iki e-postayı kendi e-postalarınızla değiştir, **Publish**.
 4. **Project settings (dişli) → General → Your apps → Web (</>)** ile bir web uygulaması ekle. Çıkan `firebaseConfig` değerlerini kopyala.
