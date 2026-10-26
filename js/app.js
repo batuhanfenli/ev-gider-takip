@@ -11,6 +11,8 @@ const S = {
   categories: DEFAULT_CATEGORIES,
   settings: {},
   loaded: false,
+  shopping: [],
+  shoppingLoaded: false,
   range: loadPref("range", { preset: "month" }),
   filter: { cat: "", who: "", q: "" },
 };
@@ -149,6 +151,7 @@ async function start() {
     unsubs = [];
     S.user = user;
     S.loaded = false;
+    S.shoppingLoaded = false;
     if (user) {
       unsubs.push(S.store.watchExpenses((list, sync) => {
         S.expenses = list; S.loaded = true; S.sync = sync || {}; S.syncError = null;
@@ -162,6 +165,11 @@ async function start() {
       }));
       unsubs.push(S.store.watchCategories((list) => { S.categories = list && list.length ? list : DEFAULT_CATEGORIES; renderView(); }));
       unsubs.push(S.store.watchSettings((s) => { S.settings = s || {}; }));
+      unsubs.push(S.store.watchShopping((list) => {
+        S.shopping = list; S.shoppingLoaded = true;
+        renderShoppingBadge();
+        if (route() === "ihtiyaclar") renderView();
+      }));
     }
     render();
   });
@@ -181,6 +189,7 @@ function render() {
   const nav = [
     ["ozet", "Özet", ICONS.home],
     ["harcamalar", "Harcamalar", ICONS.list],
+    ["ihtiyaclar", "İhtiyaçlar", ICONS.cart],
     ["ayarlar", "Ayarlar", ICONS.gear],
   ];
   app.innerHTML = `
@@ -189,33 +198,147 @@ function render() {
         <div class="brand"><img src="icons/icon-192.png" alt=""><span>Ev Giderleri</span></div>
         <button class="btn primary block" data-act="add">${ICONS.plus} Harcama ekle</button>
         <button class="btn soft block" data-act="receipt">${ICONS.camera} Fiş tara</button>
-        <nav>${nav.map(([id, label, ic]) => `<a href="#${id}" class="${r === id ? "active" : ""}">${ic}<span>${label}</span></a>`).join("")}</nav>
+        <nav>${nav.map(([id, label, ic]) => `<a href="#${id}" class="${r === id ? "active" : ""}">${ic}<span>${label}</span>${id === "ihtiyaclar" ? `<i class="count" data-shop-count></i>` : ""}</a>`).join("")}</nav>
         <div class="sidebar-user">${avatar(S.user.name)}<div><b>${esc(S.user.name)}</b><small>${esc(S.user.email)}</small></div></div>
       </aside>
       <main class="main">
         <header class="topbar">
-          <h1>${{ ozet: "Özet", harcamalar: "Harcamalar", ayarlar: "Ayarlar" }[r] || "Özet"}</h1>
+          <h1>${{ ozet: "Özet", harcamalar: "Harcamalar", ihtiyaclar: "İhtiyaçlar", ayarlar: "Ayarlar" }[r] || "Özet"}</h1>
           <div class="topbar-right">
             <span id="sync-badge"></span>
             ${S.store.mode === "demo" ? `<span class="badge warn" title="Veriler yalnızca bu cihazda tutuluyor">Deneme modu</span>` : ""}
             <span class="topbar-user">${avatar(S.user.name)}</span>
           </div>
         </header>
-        ${r !== "ayarlar" ? `<div class="rangebar" id="rangebar"></div>` : ""}
+        ${HAS_RANGE.includes(r) ? `<div class="rangebar" id="rangebar"></div>` : ""}
         <section id="view"></section>
       </main>
       <nav class="tabbar">
         <a href="#ozet" class="${r === "ozet" ? "active" : ""}">${ICONS.home}<span>Özet</span></a>
         <a href="#harcamalar" class="${r === "harcamalar" ? "active" : ""}">${ICONS.list}<span>Harcamalar</span></a>
-        <button class="fab" data-act="add" aria-label="Harcama ekle">${ICONS.plus}</button>
-        <button data-act="receipt">${ICONS.camera}<span>Fiş tara</span></button>
+        <button class="fab" data-act="sheet" aria-label="Ekle">${ICONS.plus}</button>
+        <a href="#ihtiyaclar" class="${r === "ihtiyaclar" ? "active" : ""}">${ICONS.cart}<span>İhtiyaçlar</span><i class="count" data-shop-count></i></a>
         <a href="#ayarlar" class="${r === "ayarlar" ? "active" : ""}">${ICONS.gear}<span>Ayarlar</span></a>
       </nav>
     </div>`;
   $$("[data-act=add]", app).forEach((b) => b.onclick = () => openExpenseModal());
   $$("[data-act=receipt]", app).forEach((b) => b.onclick = () => openReceiptModal());
+  $$("[data-act=sheet]", app).forEach((b) => b.onclick = openAddSheet);
   renderSyncBadge();
+  renderShoppingBadge();
   renderView();
+}
+
+const HAS_RANGE = ["ozet", "harcamalar"];
+
+// Telefondaki + düğmesi: harcama, fiş ya da ihtiyaç eklemeyi seçtirir.
+function openAddSheet() {
+  const { root, close } = openModal(`
+    <div class="modal-body sheet">
+      <button class="sheet-btn" data-pick="add">${ICONS.plus}<span><b>Harcama ekle</b><small>Tutarı ve kategoriyi elle gir</small></span></button>
+      <button class="sheet-btn" data-pick="receipt">${ICONS.camera}<span><b>Fiş tara</b><small>Fişin fotoğrafından otomatik ekle</small></span></button>
+      <button class="sheet-btn" data-pick="need">${ICONS.cart}<span><b>İhtiyaç ekle</b><small>Market listesine not al</small></span></button>
+      <button class="btn ghost block" data-close>Vazgeç</button>
+    </div>`);
+  $("[data-pick=add]", root).onclick = () => { close(); openExpenseModal(); };
+  $("[data-pick=receipt]", root).onclick = () => { close(); openReceiptModal(); };
+  $("[data-pick=need]", root).onclick = () => {
+    close();
+    S.focusNeed = true;
+    if (route() === "ihtiyaclar") renderView(); else location.hash = "ihtiyaclar";
+  };
+}
+
+function renderShoppingBadge() {
+  const n = (S.shopping || []).filter((x) => !x.done).length;
+  $$("[data-shop-count]").forEach((el) => { el.textContent = n || ""; el.hidden = !n; });
+}
+
+// ---------- İhtiyaçlar (market listesi) ----------
+function renderShopping(view) {
+  if (!S.shoppingLoaded) {
+    view.innerHTML = `<div class="center-msg"><div class="spinner"></div></div>`;
+    return;
+  }
+  const ts = (x) => (x?.toMillis ? x.toMillis() : x || Date.now());
+  const open = S.shopping.filter((x) => !x.done).sort((a, b) => ts(b.createdAt) - ts(a.createdAt));
+  const done = S.shopping.filter((x) => x.done).sort((a, b) => ts(b.doneAt) - ts(a.doneAt));
+  const draft = $("#need-input")?.value || "";
+  const when = (t) => {
+    const d = new Date(ts(t));
+    const key = iso(d);
+    return key === todayIso() ? `bugün ${pad(d.getHours())}:${pad(d.getMinutes())}` : fmtDayLong(key);
+  };
+  const row = (x) => `
+    <li class="need ${x.done ? "done" : ""}">
+      <button class="need-check" data-toggle="${esc(x.id)}" aria-label="${x.done ? "Alınmadı olarak işaretle" : "Alındı olarak işaretle"}">${x.done ? "✓" : ""}</button>
+      <button class="need-text" data-edit="${esc(x.id)}">
+        <b>${esc(x.name)}</b>
+        <small class="muted">${x.done ? `${esc(x.doneBy || "")} aldı · ${when(x.doneAt)}` : `${esc(x.addedBy || "")} ekledi · ${when(x.createdAt)}`}</small>
+      </button>
+      <button class="icon-btn" data-del="${esc(x.id)}" aria-label="Sil">${ICONS.trash}</button>
+    </li>`;
+  view.innerHTML = `
+    <div class="shop">
+      <form id="need-form" class="need-form card">
+        <input id="need-input" placeholder="Ne lazım? Örn. 2 kg domates" autocomplete="off" maxlength="80" value="${esc(draft)}">
+        <button class="btn primary" type="submit">${ICONS.plus}<span>Ekle</span></button>
+      </form>
+      <div class="card">
+        <div class="card-head"><h3>Alınacaklar</h3><span class="muted small">${open.length} ürün</span></div>
+        ${open.length ? `<ul class="need-list">${open.map(row).join("")}</ul>`
+          : `<div class="empty">Listede alınacak bir şey yok. Aklına gelen ihtiyacı yukarıya yaz.</div>`}
+      </div>
+      ${done.length ? `
+      <div class="card">
+        <div class="card-head"><h3>Alındı</h3><button class="btn ghost small" id="clear-done">Listeden kaldır</button></div>
+        <ul class="need-list">${done.map(row).join("")}</ul>
+      </div>` : ""}
+      <p class="muted small center">Bir ürünü aldığında yanındaki yuvarlağa dokun. Değiştirmek için adına dokun.</p>
+    </div>`;
+
+  const input = $("#need-input");
+  if (S.focusNeed) { S.focusNeed = false; setTimeout(() => input.focus(), 50); }
+  $("#need-form").onsubmit = (e) => {
+    e.preventDefault();
+    const name = input.value.trim();
+    if (!name) return input.focus();
+    if (open.some((x) => x.name.toLocaleLowerCase("tr") === name.toLocaleLowerCase("tr"))) {
+      toast(`"${name}" zaten listede`);
+      input.value = "";
+      return;
+    }
+    input.value = "";
+    // Beklemeden yazıyoruz: internet yokken de liste anında güncellensin, bağlantı gelince gönderilsin.
+    S.store.addShopping({ name, done: false, addedBy: S.user.name }).catch(saveFailed);
+    setTimeout(() => $("#need-input")?.focus(), 30);
+  };
+  $$("[data-toggle]", view).forEach((b) => b.onclick = () => {
+    const x = S.shopping.find((y) => y.id === b.dataset.toggle);
+    if (!x) return;
+    const patch = x.done ? { done: false, doneBy: null, doneAt: null } : { done: true, doneBy: S.user.name, doneAt: Date.now() };
+    S.store.updateShopping(x.id, patch).catch(saveFailed);
+  });
+  $$("[data-edit]", view).forEach((b) => b.onclick = async () => {
+    const x = S.shopping.find((y) => y.id === b.dataset.edit);
+    if (!x) return;
+    const name = await ask({ title: "İhtiyacı düzenle", input: { value: x.name }, ok: "Kaydet" });
+    if (name && name !== x.name) S.store.updateShopping(x.id, { name }).catch(saveFailed);
+  });
+  $$("[data-del]", view).forEach((b) => b.onclick = () => {
+    S.store.deleteShopping([b.dataset.del]).catch(saveFailed);
+  });
+  const cd = $("#clear-done");
+  if (cd) cd.onclick = async () => {
+    if (await ask({ title: "Alınanlar listeden kaldırılsın mı?", text: `${done.length} ürün silinecek.`, ok: "Kaldır" })) {
+      S.store.deleteShopping(done.map((x) => x.id)).catch(saveFailed);
+    }
+  };
+}
+
+function saveFailed(err) {
+  console.error(err);
+  toast("Kaydedilemedi. Bağlantıyı kontrol et.", "error");
 }
 
 // Buluta bağlantı durumunu üst çubukta gösterir: çevrimdışı, gönderiliyor ya da hata.
@@ -235,7 +358,8 @@ function renderView() {
   const view = $("#view");
   if (!view || !S.user) return;
   const r = route();
-  if (r !== "ayarlar") renderRangeBar();
+  if (HAS_RANGE.includes(r)) renderRangeBar();
+  if (r === "ihtiyaclar") return renderShopping(view);
   if (!S.loaded && r !== "ayarlar") {
     view.innerHTML = `<div class="center-msg"><div class="spinner"></div></div>`;
     return;
@@ -941,6 +1065,7 @@ const ICONS = {
   camera: svg('<path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/>'),
   search: svg('<circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/>'),
   download: svg('<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="m7 10 5 5 5-5"/><path d="M12 15V3"/>'),
+  cart: svg('<circle cx="9" cy="20" r="1.5"/><circle cx="18" cy="20" r="1.5"/><path d="M2 3h3l2.7 12.4a2 2 0 0 0 2 1.6h7.7a2 2 0 0 0 2-1.5L21 8H6"/>'),
   trash: svg('<path d="M3 6h18"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/>'),
 };
 

@@ -393,3 +393,41 @@ label input, label select { color: var(--text); font-weight: 400; font-size: 15p
 .btn.danger { background: var(--danger); color: #fff; }
 .badge.ok { background: color-mix(in srgb, var(--ok) 14%, transparent); color: var(--ok); }
 .badge.error { background: color-mix(in srgb, var(--danger) 14%, transparent); color: var(--danger); }
+
+/* ---- Ekle menüsü ---- */
+.sheet { display: flex; flex-direction: column; gap: 8px; padding-top: 18px; }
+.sheet-btn {
+  display: flex; align-items: center; gap: 14px; padding: 14px; border-radius: 16px; text-align: left;
+  border: 1px solid var(--border); background: var(--surface);
+}
+.sheet-btn > svg { width: 44px; height: 44px; padding: 11px; border-radius: 14px; background: var(--primary-soft); color: var(--primary); flex: none; }
+.sheet-btn b { display: block; }
+.sheet-btn small { color: var(--muted); font-size: 13px; }
+
+/* ---- İhtiyaçlar ---- */
+.count {
+  font-style: normal; font-size: 11px; font-weight: 750; min-width: 18px; height: 18px; padding: 0 5px;
+  border-radius: 999px; background: var(--danger); color: #fff; display: inline-grid; place-items: center;
+}
+.sidebar nav a .count { margin-left: auto; }
+.tabbar a { position: relative; }
+.tabbar a .count { position: absolute; top: 0; left: calc(50% + 6px); }
+.shop { display: flex; flex-direction: column; gap: 14px; max-width: 680px; }
+.need-form { display: flex; gap: 8px; padding: 10px; }
+.need-form input { border: 0; box-shadow: none; font-size: 16px; }
+.need-form input:focus { box-shadow: none; }
+.need-list { list-style: none; margin: 0; padding: 0; }
+.need { display: flex; align-items: center; gap: 10px; padding: 6px 0; }
+.need + .need { border-top: 1px solid var(--border); }
+.need-check {
+  width: 28px; height: 28px; border-radius: 50%; border: 2px solid var(--border); background: transparent;
+  flex: none; display: grid; place-items: center; font-weight: 800; color: var(--primary-text); font-size: 14px;
+}
+.need-check:hover { border-color: var(--primary); }
+.need.done .need-check { background: var(--ok); border-color: var(--ok); color: #fff; }
+.need-text { flex: 1; min-width: 0; text-align: left; border: 0; background: none; padding: 6px 0; }
+.need-text b { display: block; font-weight: 600; overflow-wrap: anywhere; }
+.need-text small { font-size: 12px; }
+.need.done .need-text b { text-decoration: line-through; color: var(--muted); font-weight: 500; }
+.need .icon-btn svg { width: 18px; }
+.center { text-align: center; }

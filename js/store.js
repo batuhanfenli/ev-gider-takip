@@ -28,6 +28,7 @@ async function createCloudStore() {
   const expensesCol = fs.collection(db, "expenses");
   const settingsDoc = fs.doc(db, "meta", "settings");
   const categoriesDoc = fs.doc(db, "meta", "categories");
+  const shoppingCol = fs.collection(db, "shopping");
 
   return {
     mode: "cloud",
@@ -63,6 +64,17 @@ async function createCloudStore() {
     deleteExpense: (id) => fs.deleteDoc(fs.doc(expensesCol, id)),
     saveCategories: (list) => fs.setDoc(categoriesDoc, { list }),
     saveSettings: (patch) => fs.setDoc(settingsDoc, patch, { merge: true }),
+    watchShopping(cb) {
+      return fs.onSnapshot(shoppingCol, (snap) =>
+        cb(snap.docs.map((d) => ({ id: d.id, ...d.data() }))));
+    },
+    addShopping: (item) => fs.addDoc(shoppingCol, { ...item, createdAt: fs.serverTimestamp() }),
+    updateShopping: (id, patch) => fs.updateDoc(fs.doc(shoppingCol, id), patch),
+    async deleteShopping(ids) {
+      const batch = fs.writeBatch(db);
+      ids.forEach((id) => batch.delete(fs.doc(shoppingCol, id)));
+      await batch.commit();
+    },
     async saveReceipt(dataUrl) {
       const ref = fs.doc(fs.collection(db, "receipts"));
       await fs.setDoc(ref, { data: dataUrl, createdAt: fs.serverTimestamp() });
@@ -77,15 +89,15 @@ async function createCloudStore() {
 
 function createDemoStore() {
   const KEY = "ev-giderleri-demo-v2";
-  const listeners = { expenses: new Set(), categories: new Set(), settings: new Set(), auth: new Set() };
+  const listeners = { expenses: new Set(), categories: new Set(), settings: new Set(), shopping: new Set(), auth: new Set() };
   let state = load();
 
   function load() {
     try {
       const s = JSON.parse(localStorage.getItem(KEY));
-      if (s && s.expenses) return s;
+      if (s && s.expenses) return { shopping: [], ...s };
     } catch {}
-    return { expenses: sampleExpenses(), categories: null, receipts: {}, settings: {}, user: null };
+    return { expenses: sampleExpenses(), shopping: sampleShopping(), categories: null, receipts: {}, settings: {}, user: null };
   }
   function save() {
     try { localStorage.setItem(KEY, JSON.stringify(state)); } catch {}
@@ -95,6 +107,7 @@ function createDemoStore() {
     listeners.expenses.forEach((cb) => cb(state.expenses.slice()));
     listeners.categories.forEach((cb) => cb(state.categories));
     listeners.settings.forEach((cb) => cb({ ...state.settings }));
+    listeners.shopping.forEach((cb) => cb(state.shopping.slice()));
   }
   // Aynı tarayıcıda açık diğer sekmeler de güncellensin.
   window.addEventListener("storage", (ev) => {
@@ -139,6 +152,13 @@ function createDemoStore() {
     },
     async saveCategories(list) { state.categories = list; save(); },
     async saveSettings(patch) { state.settings = { ...state.settings, ...patch }; save(); },
+    watchShopping: (cb) => watch(listeners.shopping, cb, () => state.shopping.slice()),
+    async addShopping(item) { state.shopping.push({ ...item, id: uid(), createdAt: Date.now() }); save(); },
+    async updateShopping(id, patch) {
+      state.shopping = state.shopping.map((x) => (x.id === id ? { ...x, ...patch } : x));
+      save();
+    },
+    async deleteShopping(ids) { state.shopping = state.shopping.filter((x) => !ids.includes(x.id)); save(); },
     async saveReceipt(dataUrl) {
       const id = uid();
       state.receipts[id] = dataUrl;
@@ -184,5 +204,16 @@ function sampleExpenses() {
   return rows.map(([ago, categoryId, sub, amount, note, who], i) => ({
     id: "ornek" + i, date: d(ago), categoryId, sub, amount, note, who,
     whoEmail: members.find((m) => m.name === who).email, createdAt: Date.now() - ago * 864e5,
+  }));
+}
+
+function sampleShopping() {
+  const [a, b] = members.map((m) => m.name);
+  return [
+    ["Süt", a, false], ["Yumurta (30'lu)", b, false], ["Bulaşık deterjanı", b, false],
+    ["Ekmek", a, true],
+  ].map(([name, who, done], i) => ({
+    id: "ornek-ihtiyac" + i, name, addedBy: who, createdAt: Date.now() - i * 36e5,
+    done, ...(done ? { doneBy: b, doneAt: Date.now() } : {}),
   }));
 }
